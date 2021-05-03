@@ -127,8 +127,8 @@ while run:
 
 	draw_bg()
 
-	'''player.draw()
-	player.update_animation()'''
+	player.draw()
+	player.update_animation()
 
 	if player.alive:
 		if player.in_air:
