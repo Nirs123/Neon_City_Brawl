@@ -1,5 +1,6 @@
 import pygame
 import os
+from pygame import mixer
 
 pygame.init()
 
@@ -15,6 +16,10 @@ FPS = 60
 
 #varibales du jeu
 GRAVITY = 0.75
+ 
+#ouverture des sons et fx
+jump_fx = pygame.mixer.Sound('audio/export.wav')
+jump_fx.set_volume(0.5)
 
 #initialisation action du player
 moving_left = False
@@ -28,6 +33,12 @@ def draw_bg():
 	screen.fill(BG)
 	#ligne temporaire
 	pygame.draw.line(screen, RED, (0, 300), (SCREEN_WIDTH, 300))
+
+'''class Audio():
+	def __init__(self, volume):
+		self.volume = volume
+		self.audio = pygame.mixer.Sound('audio/jump1.wav')
+		self.audio = self.audio.set_volume(self.volume)'''
 
 class Character(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale, speed):
@@ -80,6 +91,7 @@ class Character(pygame.sprite.Sprite):
 			self.vel_y = -13
 			self.jump = False
 			self.in_air = True
+			jump_fx.play()
 
 		#application de la gravité
 		self.vel_y += GRAVITY
@@ -119,6 +131,10 @@ class Character(pygame.sprite.Sprite):
 
 
 player = Character(200, 200, 4, 4)
+
+'''jump1 = Audio(0.1)
+jump2 = Audio('jump2', 0.1)
+jump3 = Audio('jump3', 0.1)'''
 
 run = True
 while run:
