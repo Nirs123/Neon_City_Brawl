@@ -145,7 +145,7 @@ while run:
 			run = False
 		#touche appuyées
 		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_q:
+			if event.key == pygame.K_q or event.key == pygame.K_a:
 				moving_left = True
 			if event.key == pygame.K_d:
 				moving_right = True
@@ -154,7 +154,7 @@ while run:
 
 		#touches relachées
 		if event.type == pygame.KEYUP:
-			if event.key == pygame.K_q:
+			if event.key == pygame.K_q or event.key == pygame.K_a:
 				moving_left = False
 			if event.key == pygame.K_d:
 				moving_right = False
