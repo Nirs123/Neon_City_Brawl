@@ -15,14 +15,6 @@ pygame.display.set_caption('Neon City Brawl')
 clock = pygame.time.Clock()
 FPS = 60
 
-#chargements audios
-jump1 = pygame.mixer.Sound('audio/jump1.wav')
-jump1.set_volume(0.2)
-jump2 = pygame.mixer.Sound('audio/jump2.wav')
-jump2.set_volume(0.2)
-jump3 = pygame.mixer.Sound('audio/jump3.wav')
-jump3.set_volume(0.2)
-
 #varibales du jeu
 GRAVITY = 0.75
 
@@ -91,13 +83,6 @@ class Character(pygame.sprite.Sprite):
 			self.vel_y = -13
 			self.jump = False
 			self.in_air = True
-			i = random.randint(1,3)
-			if i == 1:
-				jump1.play()
-			elif i ==2:
-				jump2.play()
-			elif i ==3:
-				jump3.play()
 
 		#application de la gravité
 		self.vel_y += GRAVITY
