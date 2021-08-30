@@ -77,7 +77,7 @@ class Character(pygame.sprite.Sprite):
 				img_weapon = pygame.image.load(f'img/weapons/{weapon_animation}/{j}.png')
 				img_weapon = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
 				weapon_temp_list.append(img_weapon)
-			self.weapons_animations_list.append(temp_list)
+			self.weapons_animations_list.append(weapon_temp_list)
 		self.weapon_image = self.weapons_animations_list[self.weapon][self.weapon_frame_index]
 
 	def move(self, moving_left, moving_right):
