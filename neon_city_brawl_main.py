@@ -48,12 +48,10 @@ class Character(pygame.sprite.Sprite):
 
 		self.update_time = pygame.time.get_ticks()
 
-		self.weapons_animations_list = []
-		self.weapon_frame_index = 0
 		self.weapon = 0
 		self.temp_weapon = 0
 
-		animation_types = ['Idle', 'Run', 'Jump']
+		animation_types = ['Idle', 'Run', 'Jump','Idle_Sword','Jump_Sword','Run_Sword','Idle_Rifle','Jump_Rifle','Run_Rifle']
 		for animation in animation_types:
 			#liste temporaire pour stockage de toutes les img d'une animation
 			temp_list = []
@@ -68,17 +66,6 @@ class Character(pygame.sprite.Sprite):
 		self.image = self.animation_list[self.action][self.frame_index]
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
-
-		weapon_animation_types = ["empty", "sword", "rifle"]
-		for weapon_animation in weapon_animation_types:
-			weapon_temp_list = []
-			longueur_fichier_weapon = len(os.listdir(f'img/weapons/{weapon_animation}'))
-			for j in range(longueur_fichier_weapon):
-				img_weapon = pygame.image.load(f'img/weapons/{weapon_animation}/{j}.png')
-				img_weapon = pygame.transform.scale(img, (int(img.get_width() * scale), int(img.get_height() * scale)))
-				weapon_temp_list.append(img_weapon)
-			self.weapons_animations_list.append(weapon_temp_list)
-		self.weapon_image = self.weapons_animations_list[self.weapon][self.weapon_frame_index]
 
 	def move(self, moving_left, moving_right):
 		#variables pour le mouvement
@@ -117,7 +104,7 @@ class Character(pygame.sprite.Sprite):
 		self.rect.y += dy
 
 	def update_animation(self):
-		ANIMATION_COOLDOWN = 130
+		ANIMATION_COOLDOWN = 160
 		self.image = self.animation_list[self.action][self.frame_index]
 		#check du temps passé depuis le dernier update
 		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
@@ -126,15 +113,6 @@ class Character(pygame.sprite.Sprite):
 		#si l'animation a fini, reviens au début
 		if self.frame_index >= len(self.animation_list[self.action]):
 			self.frame_index = 0
-
-	def update_weapon_animation(self):
-		WEAPON_ANIMATION_COOLDOWN = 130
-		self.weapon_image = self.weapons_animations_list[self.weapon][self.weapon_frame_index]
-		if pygame.time.get_ticks() - self.update_time > WEAPON_ANIMATION_COOLDOWN:
-			self.update_time = pygame.time.get_ticks()
-			self.weapon_frame_index += 1
-		if self.weapon_frame_index >= len(self.weapons_animations_list[self.weapon]):
-			self.weapon_frame_index = 0
 
 	def update_action(self, new_action):
 		#check si la nouvelle action est différente de la précedente
@@ -149,11 +127,9 @@ class Character(pygame.sprite.Sprite):
 			self.weapon = new_weapon
 			self.weapon_frame_index = 0
 			self.update_time = pygame.time.get_ticks()
-			print(f"acutal:{self.weapon}")
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
-		screen.blit(pygame.transform.flip(self.weapon_image, self.flip, False), self.rect)
 
 
 player = Character(200, 200, 4, 4)
@@ -170,12 +146,29 @@ while run:
 
 	if player.alive:
 		if player.in_air:
-			player.update_action(2) #2 = Jump
+			if player.weapon == 0:
+				player.update_action(2) # 2 = Jump
+			if player.weapon == 1:
+				player.update_action(4) # 4 = Jump_Sword
+			if player.weapon == 2:
+				player.update_action(7) # 7 = Jump_Rifle
 		elif moving_left or moving_right:
-			player.update_action(1) #1 = Run
+			if player.weapon == 0:
+				player.update_action(1) # 1 = Run
+			if player.weapon == 1:
+				player.update_action(5) # 5 = Run_Sword
+			if player.weapon == 2:
+				player.update_action(8) # 8 = Run_Rifle
 		else:
-			player.update_action(0) #0 = Idle
+			if player.weapon == 0:
+				player.update_action(0) # 0 = Idle
+			if player.weapon == 1:
+				player.update_action(3) # 4 = Idle_Sword
+			if player.weapon == 2:
+				player.update_action(6) # 6 = Idle_Rifle
 		player.move(moving_left, moving_right)
+
+		
 		if player.temp_weapon == 0:
 			player.update_weapon(0) #0 = no weapon
 		if player.temp_weapon == 1:
