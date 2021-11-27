@@ -168,7 +168,7 @@ while run:
 				player.update_action(6) # 6 = Idle_Rifle
 		player.move(moving_left, moving_right)
 
-		
+
 		if player.temp_weapon == 0:
 			player.update_weapon(0) #0 = no weapon
 		if player.temp_weapon == 1:
