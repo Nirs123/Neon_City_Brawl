@@ -100,8 +100,8 @@ class Character(pygame.sprite.Sprite):
 			self.in_air = False
 
 		#update la position de l'entité
-		self.rect.x += dx
-		self.rect.y += dy
+		self.rect.x += int(dx)
+		self.rect.y += int(dy)
 
 	def update_animation(self):
 		ANIMATION_COOLDOWN = 160
@@ -177,6 +177,13 @@ while run:
 			player.update_weapon(2) #1 = rifle
 
 	for event in pygame.event.get():
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			if event.button == 5:
+				if player.temp_weapon > 0:
+					player.temp_weapon -= 1
+			if event.button == 4:
+				if player.temp_weapon < 3:
+					player.temp_weapon += 1
 		#quit
 		if event.type == pygame.QUIT:
 			run = False
