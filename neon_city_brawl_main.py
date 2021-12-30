@@ -23,8 +23,9 @@ moving_left = False
 moving_right = False
 
 #couleurs
-BG = (249, 148, 143)
+BG = (41, 41, 41)
 RED = (255, 0, 0)
+GREEN = (53, 186, 28)
 
 def draw_bg():
 	screen.fill(BG)
@@ -35,6 +36,7 @@ def draw_bg():
 class Character(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale, speed):
 		pygame.sprite.Sprite.__init__(self)
+		self.health = 100
 		self.alive = True
 		self.speed = speed
 		self.direction = 1
@@ -45,6 +47,7 @@ class Character(pygame.sprite.Sprite):
 		self.animation_list = []
 		self.frame_index = 0
 		self.action = 0
+		self.hud_ext_index = 0
 
 		self.update_time = pygame.time.get_ticks()
 
@@ -66,6 +69,15 @@ class Character(pygame.sprite.Sprite):
 		self.image = self.animation_list[self.action][self.frame_index]
 		self.rect = self.image.get_rect()
 		self.rect.center = (x, y)
+
+		self.hud_ext_list = []
+		longueur_fichier_2 = len(os.listdir(f'img/hud'))
+		for j in range(longueur_fichier_2):
+			img2 = pygame.image.load(f'img/hud/{j}.png')
+			self.hud_ext_list.append(img2)
+		self.img_hud_ext = self.hud_ext_list[self.hud_ext_index]
+		self.rect2 = self.img_hud_ext.get_rect()
+		self.rect2.center = (70, 30)
 
 	def move(self, moving_left, moving_right):
 		#variables pour le mouvement
@@ -105,14 +117,22 @@ class Character(pygame.sprite.Sprite):
 
 	def update_animation(self):
 		ANIMATION_COOLDOWN = 160
+		ANIMATION_COOLDOWN_2 = 150
 		self.image = self.animation_list[self.action][self.frame_index]
+		self.img_hud_ext = self.hud_ext_list[self.hud_ext_index]
 		#check du temps passé depuis le dernier update
+		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN_2:
+			self.hud_ext_index += 1
 		if pygame.time.get_ticks() - self.update_time > ANIMATION_COOLDOWN:
 			self.update_time = pygame.time.get_ticks()
 			self.frame_index += 1
+		
 		#si l'animation a fini, reviens au début
 		if self.frame_index >= len(self.animation_list[self.action]):
 			self.frame_index = 0
+		if self.hud_ext_index >= len(self.hud_ext_list):
+			self.hud_ext_index = 0
+
 
 	def update_action(self, new_action):
 		#check si la nouvelle action est différente de la précedente
@@ -130,9 +150,23 @@ class Character(pygame.sprite.Sprite):
 
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
+		screen.blit(self.img_hud_ext, self.rect2)
 
+class Healthbar():
+	def __init__(self,x,y,health,max_health):
+		self.x = x
+		self.y = y
+		self.health = health
+		self.max_health = max_health
+
+	def draw(self,health):
+		self.health = health
+		ratio = self.health/self.max_health
+		pygame.draw.rect(screen, RED, (self.x,self.y,120,40))
+		pygame.draw.rect(screen, GREEN, (self.x, self.y, 120 * ratio, 40))
 
 player = Character(200, 200, 4, 4)
+health_bar = Healthbar(10,10,player.health, player.health)
 
 run = True
 while run:
@@ -141,6 +175,7 @@ while run:
 
 	draw_bg()
 
+	health_bar.draw(player.health)
 	player.draw()
 	player.update_animation()
 
