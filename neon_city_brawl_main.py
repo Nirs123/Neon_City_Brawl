@@ -251,9 +251,9 @@ class Bullet(pygame.sprite.Sprite):
 			self.image = blue_bullet_img
 			self.image = pygame.transform.scale(self.image, (int(self.image.get_width()*0.5), int(self.image.get_height()* 0.5)))
 		elif self.color == "pink":
-			self.image = pink_bullet_img 
+			self.image = pink_bullet_img
 			self.image = pygame.transform.scale(self.image, (int(self.image.get_width()*0.7), int(self.image.get_height()* 0.7)))
-		self.rect = self.image.get_rect() 
+		self.rect = self.image.get_rect()
 		if self.color == "blue":
 			self.rect.center = (x,y+5)
 		elif self.color == "pink":
@@ -288,10 +288,10 @@ class Grenade(pygame.sprite.Sprite):
 		self.direction = direction
 
 	def update(self):
-		self.vel_y += GRAVITY 
+		self.vel_y += GRAVITY
 		dx = self.speed * self.direction
 		dy = self.vel_y
-		
+
 		if self.rect.bottom + dy > 300:
 			dy = 300 - self.rect.bottom
 			self.speed = 0
@@ -378,14 +378,6 @@ explosion_group = pygame.sprite.Group()
 enemy_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
 
-player = Character(200, 200, 1.85, 2, "player1", 30, 5)
-health_bar = Healthbar(10,10,player.health, player.health)
-
-enemy = Character(400, 200, 1.85, 2, "enemy", 60, 0)
-enemy2 = Character(650, 200, 1.85, 2, "enemy", 60, 0)
-enemy_group.add(enemy)
-enemy_group.add(enemy2)
-
 item_box = ItemBox('Ammo', 550, 260)
 item_box_group.add(item_box)
 item_box2 = ItemBox('Grenade', 750, 260)
@@ -393,10 +385,18 @@ item_box_group.add(item_box2)
 item_box3 = ItemBox('Health', 650, 260)
 item_box_group.add(item_box3)
 
+player = Character(200, 200, 1.85, 2, "player1", 30, 5)
+health_bar = Healthbar(10,10,player.health, player.health)
+'''
+enemy = Character(400, 200, 1.85, 2, "enemy", 60, 0)
+enemy2 = Character(650, 200, 1.85, 2, "enemy", 60, 0)
+enemy_group.add(enemy)
+enemy_group.add(enemy2)'''
+
 run = True
 while run:
 	clock.tick(FPS)
-	
+
 	draw_bg()
 	draw_text(f"Ammo: {player.ammo}",font,WHITE, 15, 60)
 	draw_text(f"Grenade: {player.grenades}",font,WHITE, 15, 85)
