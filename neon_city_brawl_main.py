@@ -387,11 +387,10 @@ item_box_group.add(item_box3)
 
 player = Character(200, 200, 1.85, 2, "player1", 30, 5)
 health_bar = Healthbar(10,10,player.health, player.health)
-'''
 enemy = Character(400, 200, 1.85, 2, "enemy", 60, 0)
 enemy2 = Character(650, 200, 1.85, 2, "enemy", 60, 0)
 enemy_group.add(enemy)
-enemy_group.add(enemy2)'''
+enemy_group.add(enemy2)
 
 run = True
 while run:
