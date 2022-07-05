@@ -28,10 +28,20 @@ SCROLL_THRESH = 250
 screen_scroll = 0
 bg_scroll = 0
 start_game = False
+pause = False
 setting = False
 sound = False
 control = False
 MAX_LEVELS = 2
+change_key = False
+key_to_change = None
+pop_msg_key = False
+choose_difficulty = False
+
+#difficultés
+d_easy = {}
+d_medium = {}
+d_hard = {}
 
 #audio
 music = 1.00
@@ -48,6 +58,7 @@ shoot = False
 grenade = False
 
 #chargement des images
+#background
 city1_img = pygame.image.load('img/Background/city1.png').convert_alpha()
 city2_img = pygame.image.load('img/Background/city2.png').convert_alpha()
 sky_img = pygame.image.load('img/Background/sky_cloud.png').convert_alpha()
@@ -64,7 +75,7 @@ ammo_box_img = pygame.image.load("img/tile/41.png").convert_alpha()
 grenade_box_img = pygame.image.load("img/tile/42.png").convert_alpha()
 health_box_img = pygame.image.load("img/tile/43.png").convert_alpha()
 item_boxes = {'Ammo':ammo_box_img, 'Grenade': grenade_box_img, 'Health': health_box_img}
-#images des settings
+#settings and menu
 play_img = pygame.image.load("img/menu/play.png").convert_alpha()
 quit_img = pygame.image.load("img/menu/quit.png").convert_alpha()
 resume_img = pygame.image.load("img/menu/resume.png").convert_alpha()
@@ -77,6 +88,17 @@ effects_img = pygame.image.load("img/menu/effects.png").convert_alpha()
 music_img = pygame.image.load("img/menu/music.png").convert_alpha()
 moins_img = pygame.image.load("img/menu/moins.png").convert_alpha()
 plus_img = pygame.image.load("img/menu/plus.png").convert_alpha()
+grenade_img_menu = pygame.image.load("img/menu/grenade.png").convert_alpha()
+hand_img_menu = pygame.image.load("img/menu/hand.png").convert_alpha()
+jump_img_menu = pygame.image.load("img/menu/jump.png").convert_alpha()
+left_img_menu = pygame.image.load("img/menu/left.png").convert_alpha()
+rifle_img_menu = pygame.image.load("img/menu/rifle.png").convert_alpha()
+right_img_menu = pygame.image.load("img/menu/right.png").convert_alpha()
+key_input_img = pygame.image.load("img/menu/key_input.png").convert_alpha()
+difficulty_img = pygame.image.load("img/menu/difficulty.png").convert_alpha()
+easy_img = pygame.image.load("img/menu/easy.png").convert_alpha()
+medium_img = pygame.image.load("img/menu/medium.png").convert_alpha()
+hard_img = pygame.image.load("img/menu/hard.png").convert_alpha()
 
 #couleurs
 BG = (41, 41, 41)
@@ -94,8 +116,9 @@ def draw_bg():
 		screen.blit(city2_img, ((x * width) - bg_scroll * 0.8, SCREEN_HEIGHT - city2_img.get_height()-50))
 
 font = pygame.font.SysFont('Futura',30)
+font2 = pygame.font.SysFont('Futura',45)
 def draw_text(text, font, text_col, x , y):
-	img = font.render(text, True, text_col)
+	img = font.render(text, True, text_col,None)
 	screen.blit(img, (x,y))
 
 def draw_image(image,x,y,scale):
@@ -564,6 +587,15 @@ plus_music = button.Button(SCREEN_WIDTH - 180, SCREEN_HEIGHT // 2 - 120, plus_im
 moins_effects = button.Button(SCREEN_WIDTH - 350, SCREEN_HEIGHT // 2 + 55, moins_img, 1.25)
 plus_effects = button.Button(SCREEN_WIDTH - 180, SCREEN_HEIGHT // 2 + 55, plus_img, 1.25)
 return_button = button.Button(10, 10, return_img, 1.5)
+left_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 300, left_img_menu, 1.5)
+right_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 200, right_img_menu, 1.5)
+jump_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 100, jump_img_menu, 1.5)
+rifle_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2, rifle_img_menu, 1.5)
+grenade_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 + 100, grenade_img_menu, 1.5)
+hand_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 + 200, hand_img_menu, 1.5)
+easy_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 100, easy_img, 2)
+medium_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 25, medium_img, 2)
+hard_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 150, hard_img, 2)
 
 #Création des sprites groupes
 bullet_group = pygame.sprite.Group()
@@ -587,11 +619,13 @@ with open(f'levels/level{level}_data.csv',newline='') as csvfile:
 world = World()
 player,health_bar = world.process_data(world_data)
 
+d_keys = {"left":113,"right":100,"jump":32,"rifle":49,"grenade":50,"hand":51}
+
 run = True
 while run:
 	clock.tick(FPS)
 
-	if start_game == False:
+	if start_game == False or pause == True:
 		screen.fill(MENU_BG)
 		if setting == True:
 			if sound == True:
@@ -616,6 +650,38 @@ while run:
 			elif control == True:
 				if return_button.draw(screen):
 					control = False
+				if left_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "left"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["left"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 280)
+				if right_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "right"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["right"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 180)
+				if jump_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "jump"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["jump"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 80)
+				if rifle_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "rifle"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["rifle"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 20)
+				if grenade_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "grenade"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["grenade"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 120)
+				if hand_button.draw(screen) and pop_msg_key == False:
+					change_key = True
+					key_to_change = "hand"
+					pop_msg_key = True
+				draw_text(pygame.key.name(d_keys["hand"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 220)
+				if pop_msg_key:
+					draw_image(key_input_img,SCREEN_WIDTH // 5, SCREEN_HEIGHT // 3.25,2)
 			else:
 				if return_button.draw(screen):
 					setting = False
@@ -623,9 +689,24 @@ while run:
 					sound = True
 				if controls_button.draw(screen):
 					control = True
-		else:
-			if play_button.draw(screen):
+		elif choose_difficulty:
+			draw_image(difficulty_img,SCREEN_WIDTH // 4, SCREEN_WIDTH - 755,1.5)
+			if easy_button.draw(screen):
+				difficulty = d_easy
 				start_game = True
+			if medium_button.draw(screen):
+				difficulty = d_medium
+				start_game = True
+			if hard_button.draw(screen):
+				difficulty = d_hard
+				start_game = True
+		else:
+			if pause == True:
+				if resume_button.draw(screen):
+					pause = False
+			else:
+				if play_button.draw(screen):
+					choose_difficulty = True
 			if setting_button.draw(screen):
 				setting = True
 			if quit_button.draw(screen):
@@ -740,22 +821,45 @@ while run:
 			run = False
 		#touche appuyées
 		if event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_q or event.key == pygame.K_a:
+			if change_key == True:
+				d_keys[key_to_change] = event.key
+				change_key = False
+				pop_msg_key = False
+			if event.key == d_keys["left"]:
 				moving_left = True
-			if event.key == pygame.K_d:
+			if event.key == d_keys["right"]:
 				moving_right = True
-			if event.key == pygame.K_SPACE and player.alive:
+			if event.key == d_keys["jump"] and player.alive:
 				player.jump = True
-			if event.key == pygame.K_1:
+			if event.key == d_keys["rifle"]:
 				player.temp_weapon = 2
-			if event.key == pygame.K_2:
+			if event.key == d_keys["grenade"]:
 				player.temp_weapon = 1
-			if event.key == pygame.K_3:
+			if event.key == d_keys["hand"]:
 				player.temp_weapon = 0
 			if event.key == pygame.K_F1:
 				DEBUG_HITBOX = not DEBUG_HITBOX
 			if event.key == pygame.K_F2:
 				DEBUG_VISION = not DEBUG_VISION
+			if event.key == pygame.K_ESCAPE:
+				if start_game == False:
+					if setting == True:
+						if control == True:
+							control = not control
+						elif sound == True:
+							sound = not sound
+						else:
+							setting = not setting
+				else:
+					if setting == True:
+						if control == True:
+							control = not control
+						elif sound == True:
+							sound = not sound
+						else:
+							setting = not setting
+					else:
+						pause = not pause
 		#touches relachées
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_q or event.key == pygame.K_a:
