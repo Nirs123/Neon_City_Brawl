@@ -1,10 +1,11 @@
 import pygame
 import os
-from pygame import mixer
 import random
 import csv
 import button
+import time
 
+pygame.mixer.init()
 pygame.init()
 
 SCREEN_WIDTH = 800
@@ -37,6 +38,9 @@ change_key = False
 key_to_change = None
 pop_msg_key = False
 choose_difficulty = False
+play_trans = False
+s_music = True
+s_audio_death = True
 
 #difficultés
 d_easy = {}
@@ -46,6 +50,17 @@ d_hard = {}
 #audio
 music = 1.00
 effects = 1.00
+audio_death = pygame.mixer.Sound("audio/effects/death.wav")
+audio_grenade = pygame.mixer.Sound("audio/effects/grenade.wav")
+audio_jump = pygame.mixer.Sound("audio/effects/jump.wav")
+audio_shoot = pygame.mixer.Sound("audio/effects/shoot.wav")
+audio_loading1 = pygame.mixer.Sound("audio/effects/loading_1.wav")
+audio_loading2 = pygame.mixer.Sound("audio/effects/loading_2.wav")
+audio_loading3 = pygame.mixer.Sound("audio/effects/loading_3.wav")
+audio_death.set_volume(0.15)
+l_effects = [audio_loading3,audio_loading2,audio_loading2,audio_jump,audio_shoot,audio_grenade]
+pygame.mixer.music.load("audio/music.wav")
+pygame.mixer.music.play(-1, 0.0, 10000)
 
 #Debug
 DEBUG_HITBOX = False
@@ -342,6 +357,7 @@ class Character(pygame.sprite.Sprite):
 				bullet = Bullet(self.rect.centerx + (0.6 * self.rect.size[0] * self.direction), self.rect.centery-10, self.direction,"pink")
 			bullet_group.add(bullet)
 			self.ammo -= 1
+			audio_shoot.play()
 
 	def update_action(self, new_action):
 		#check si la nouvelle action est différente de la précedente
@@ -435,6 +451,7 @@ class Grenade(pygame.sprite.Sprite):
 		self.timer -= 1
 		if self.timer <= 0:
 			self.kill()
+			audio_grenade.play()
 			explosion = Explosion(self.rect.x,self.rect.y, 2)
 			explosion_group.add(explosion)
 			if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 1.5 and abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 1.5:
@@ -574,6 +591,34 @@ class Healthbar():
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 120 * ratio, 40))
 
 
+class Fade():
+	def __init__(self,type,colour,speed):
+		self.type = type
+		self.colour = colour
+		self.speed = speed
+		self.fade_counter = 0
+
+	def fade(self):
+		fade_complete = False
+		self.fade_counter += self.speed
+		if self.type == 1:
+			pygame.draw.rect(screen, self.colour, (0 - self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH // 2 + self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (0, 0 - self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
+			pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT // 2 +self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT))
+			if self.fade_counter >= SCREEN_WIDTH * 0.5:
+				fade_complete = True
+		if self.type == 2:
+			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
+			if self.fade_counter >= SCREEN_WIDTH * 1:
+				fade_complete = True
+		return fade_complete
+
+#Création des transitions
+play_transition = Fade(1,MENU_BG,4)
+death_transition = Fade(2,MENU_BG,7)
+
+
 #Création des boutons
 play_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 225, play_img, 2)
 resume_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 225, resume_img, 2)
@@ -638,16 +683,23 @@ while run:
 				if moins_music.draw(screen):
 					if music >= 0.05:
 						music = round(music - 0.05,2)
+						pygame.mixer.music.set_volume(music)
 				if plus_music.draw(screen):
 					if music <= 0.95:
 						music = round(music + 0.05,2)
+						pygame.mixer.music.set_volume(music)
 				if plus_effects.draw(screen):
 					if effects <= 0.95:
 						effects = round(effects + 0.05,2)
+						for elem in l_effects:
+							elem.set_volume(effects)
 				if moins_effects.draw(screen):
 					if effects >= 0.05:
 						effects = round(effects - 0.05,2)
+						for elem in l_effects:
+							elem.set_volume(effects)
 			elif control == True:
+				
 				if return_button.draw(screen):
 					control = False
 				if left_button.draw(screen) and pop_msg_key == False:
@@ -689,21 +741,31 @@ while run:
 					sound = True
 				if controls_button.draw(screen):
 					control = True
+					time.sleep(0.06)
 		elif choose_difficulty:
 			draw_image(difficulty_img,SCREEN_WIDTH // 4, SCREEN_WIDTH - 755,1.5)
+			if return_button.draw(screen):
+				choose_difficulty = False
 			if easy_button.draw(screen):
 				difficulty = d_easy
 				start_game = True
+				choose_difficulty = False
+				play_trans = True
 			if medium_button.draw(screen):
 				difficulty = d_medium
 				start_game = True
+				choose_difficulty = False
+				play_trans = True
 			if hard_button.draw(screen):
 				difficulty = d_hard
 				start_game = True
+				choose_difficulty = False
+				play_trans = True
 		else:
 			if pause == True:
 				if resume_button.draw(screen):
 					pause = False
+					play_trans = True
 			else:
 				if play_button.draw(screen):
 					choose_difficulty = True
@@ -739,70 +801,81 @@ while run:
 		draw_text(f"Ammo: {player.ammo}",font,WHITE, 15, 60)
 		draw_text(f"Grenade: {player.grenades}",font,WHITE, 15, 85)
 
-		if player.alive:
-			if shoot:
-				player.shoot()
-			elif grenade and player.grenades > 0:
-				tmp_grenade = Grenade(player.rect.centerx + (player.rect.size[0]*0.15*player.direction), player.rect.top+10, player.direction)
-				grenade_group.add(tmp_grenade)
-				player.grenades -= 1
-			shoot = False
-			grenade = False
-			if player.in_air:
-				if player.weapon == 0:
-					player.update_action(2) # 2 = Jump
-				if player.weapon == 1:
-					player.update_action(4) # 4 = Jump_Grnade
-				if player.weapon == 2:
-					player.update_action(7) # 7 = Jump_Rifle
-			elif moving_left or moving_right:
-				if player.weapon == 0:
-					player.update_action(1) # 1 = Run
-				if player.weapon == 1:
-					player.update_action(5) # 5 = Run_Grenade
-				if player.weapon == 2:
-					player.update_action(8) # 8 = Run_Rifle
-			else:
-				if player.weapon == 0:
-					player.update_action(0) # 0 = Idle
-				if player.weapon == 1:
-					player.update_action(3) # 4 = Idle_Grande
-				if player.weapon == 2:
-					player.update_action(6) # 6 = Idle_Rifle
-			screen_scroll,level_complete = player.move(moving_left, moving_right)
-			bg_scroll -= screen_scroll
-			if level_complete:
-				level += 1
-				bg_scroll = 0
-				world_data = restart_level()
-				if level <= MAX_LEVELS:
-					with open(f'levels/level{level}_data.csv',newline='') as csvfile:
-						reader = csv.reader(csvfile,delimiter=",")
-						for x,row in enumerate(reader):
-							for y,tile in enumerate(row):
-								world_data[x][y] = int(tile)
-					world = World()
-					player,health_bar = world.process_data(world_data)
-
-
-			if player.temp_weapon == 0:
-				player.update_weapon(0) #0 = no weapon
-			if player.temp_weapon == 1:
-				player.update_weapon(1) #1 = Grenade
-			if player.temp_weapon == 2:
-				player.update_weapon(2) #1 = rifle
+		if play_trans:
+			if play_transition.fade():
+				play_trans = False
+				play_transition.fade_counter = 0
 		else:
-			screen_scroll = 0
-			if restart_button.draw(screen):
-				bg_scroll = 0 
-				world_data = restart_level()
-				with open(f'levels/level{level}_data.csv',newline='') as csvfile:
-					reader = csv.reader(csvfile,delimiter=",")
-					for x,row in enumerate(reader):
-						for y,tile in enumerate(row):
-							world_data[x][y] = int(tile)
-				world = World()
-				player,health_bar = world.process_data(world_data)
+			if player.alive:
+				if shoot:
+					player.shoot()
+				elif grenade and player.grenades > 0:
+					tmp_grenade = Grenade(player.rect.centerx + (player.rect.size[0]*0.15*player.direction), player.rect.top+10, player.direction)
+					grenade_group.add(tmp_grenade)
+					player.grenades -= 1
+				shoot = False
+				grenade = False
+				if player.in_air:
+					if player.weapon == 0:
+						player.update_action(2) # 2 = Jump
+					if player.weapon == 1:
+						player.update_action(4) # 4 = Jump_Grnade
+					if player.weapon == 2:
+						player.update_action(7) # 7 = Jump_Rifle
+				elif moving_left or moving_right:
+					if player.weapon == 0:
+						player.update_action(1) # 1 = Run
+					if player.weapon == 1:
+						player.update_action(5) # 5 = Run_Grenade
+					if player.weapon == 2:
+						player.update_action(8) # 8 = Run_Rifle
+				else:
+					if player.weapon == 0:
+						player.update_action(0) # 0 = Idle
+					if player.weapon == 1:
+						player.update_action(3) # 4 = Idle_Grande
+					if player.weapon == 2:
+						player.update_action(6) # 6 = Idle_Rifle
+				screen_scroll,level_complete = player.move(moving_left, moving_right)
+				bg_scroll -= screen_scroll
+				if level_complete:
+					level += 1
+					bg_scroll = 0
+					world_data = restart_level()
+					play_trans = True
+					if level <= MAX_LEVELS:
+						with open(f'levels/level{level}_data.csv',newline='') as csvfile:
+							reader = csv.reader(csvfile,delimiter=",")
+							for x,row in enumerate(reader):
+								for y,tile in enumerate(row):
+									world_data[x][y] = int(tile)
+						world = World()
+						player,health_bar = world.process_data(world_data)
+
+
+				if player.temp_weapon == 0:
+					player.update_weapon(0) #0 = no weapon
+				if player.temp_weapon == 1:
+					player.update_weapon(1) #1 = Grenade
+				if player.temp_weapon == 2:
+					player.update_weapon(2) #1 = rifle
+			else:
+				screen_scroll = 0
+				if s_audio_death == True:
+						audio_death.play()
+						s_audio_death = False
+				if death_transition.fade():
+					if restart_button.draw(screen):
+						s_audio_death = True
+						bg_scroll = 0 
+						world_data = restart_level()
+						with open(f'levels/level{level}_data.csv',newline='') as csvfile:
+							reader = csv.reader(csvfile,delimiter=",")
+							for x,row in enumerate(reader):
+								for y,tile in enumerate(row):
+									world_data[x][y] = int(tile)
+						world = World()
+						player,health_bar = world.process_data(world_data)
 
 	for event in pygame.event.get():
 		if event.type == pygame.MOUSEBUTTONDOWN:
@@ -831,6 +904,7 @@ while run:
 				moving_right = True
 			if event.key == d_keys["jump"] and player.alive:
 				player.jump = True
+				audio_jump.play()
 			if event.key == d_keys["rifle"]:
 				player.temp_weapon = 2
 			if event.key == d_keys["grenade"]:
@@ -850,6 +924,8 @@ while run:
 							sound = not sound
 						else:
 							setting = not setting
+					elif choose_difficulty == True:
+						choose_difficulty = not choose_difficulty
 				else:
 					if setting == True:
 						if control == True:
@@ -860,6 +936,7 @@ while run:
 							setting = not setting
 					else:
 						pause = not pause
+						play_trans = True
 		#touches relachées
 		if event.type == pygame.KEYUP:
 			if event.key == pygame.K_q or event.key == pygame.K_a:
