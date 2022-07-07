@@ -4,9 +4,13 @@ import random
 import csv
 import button
 import time
+import configparser
 
 pygame.mixer.init()
 pygame.init()
+
+config = configparser.ConfigParser()
+config.read("user_setting.ini")
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = int(SCREEN_WIDTH * 0.8)
@@ -41,15 +45,17 @@ choose_difficulty = False
 play_trans = False
 s_music = True
 s_audio_death = True
+s_effects_load = True
+play_trans_end = False
+end_game = False
 
 #difficultés
-d_easy = {}
-d_medium = {}
-d_hard = {}
+d_easy = {"heal_box":55,"ammo_box":20,"grenade_box":4,"player_dmg":35,"enemy_dmg":15,"grenade_dmg":40}
+d_medium = {"heal_box":50,"ammo_box":15,"grenade_box":3,"player_dmg":25,"enemy_dmg":17,"grenade_dmg":50}
+d_hard = {"heal_box":45,"ammo_box":12,"grenade_box":2,"player_dmg":20,"enemy_dmg":20,"grenade_dmg":60}
+d_difficulty = None
 
 #audio
-music = 1.00
-effects = 1.00
 audio_death = pygame.mixer.Sound("audio/effects/death.wav")
 audio_grenade = pygame.mixer.Sound("audio/effects/grenade.wav")
 audio_jump = pygame.mixer.Sound("audio/effects/jump.wav")
@@ -57,14 +63,14 @@ audio_shoot = pygame.mixer.Sound("audio/effects/shoot.wav")
 audio_loading1 = pygame.mixer.Sound("audio/effects/loading_1.wav")
 audio_loading2 = pygame.mixer.Sound("audio/effects/loading_2.wav")
 audio_loading3 = pygame.mixer.Sound("audio/effects/loading_3.wav")
-audio_death.set_volume(0.15)
-l_effects = [audio_loading3,audio_loading2,audio_loading2,audio_jump,audio_shoot,audio_grenade]
-pygame.mixer.music.load("audio/music.wav")
-pygame.mixer.music.play(-1, 0.0, 10000)
+audio_end = pygame.mixer.Sound("audio/effects/end.wav")
+l_effects = [audio_loading3,audio_loading2,audio_loading1,audio_jump,audio_shoot,audio_grenade,audio_end]
+l_audio_loading = [audio_loading3,audio_loading2,audio_loading1]
 
 #Debug
 DEBUG_HITBOX = False
 DEBUG_VISION = False
+DEBUG_INVICIBLE = False
 
 #initialisation action du player
 moving_left = False
@@ -114,6 +120,8 @@ difficulty_img = pygame.image.load("img/menu/difficulty.png").convert_alpha()
 easy_img = pygame.image.load("img/menu/easy.png").convert_alpha()
 medium_img = pygame.image.load("img/menu/medium.png").convert_alpha()
 hard_img = pygame.image.load("img/menu/hard.png").convert_alpha()
+save_setting_img = pygame.image.load("img/menu/save_setting.png").convert_alpha()
+default_setting_img = pygame.image.load("img/menu/default_setting.png").convert_alpha()
 
 #couleurs
 BG = (41, 41, 41)
@@ -132,6 +140,7 @@ def draw_bg():
 
 font = pygame.font.SysFont('Futura',30)
 font2 = pygame.font.SysFont('Futura',45)
+font3 = pygame.font.SysFont('Futura',80)
 def draw_text(text, font, text_col, x , y):
 	img = font.render(text, True, text_col,None)
 	screen.blit(img, (x,y))
@@ -159,6 +168,37 @@ def restart_level():
 		data.append(r)
 	return data
 
+default_d_keys = {"music":1.0,"effects":1.0,"left":113,"right":100,"jump":32,"rifle":49,"grenade":50,"hand":51}
+d_keys = {}
+def load_settings():
+	for key in default_d_keys.keys():
+		if key != "music" and key != "effects":
+			d_keys[key] = int(config.get("SETTINGS",key))
+		else:
+			d_keys[key] = float(config.get("SETTINGS",key))
+
+def save_settings():
+	for k,v in d_keys.items():
+		config.set("SETTINGS",str(k),str(v))
+	with open("user_setting.ini","w") as config_file:
+		config.write(config_file)
+
+def reset_settings():
+	for k,v in default_d_keys.items():
+		d_keys[k] = v
+		config.set("SETTINGS",str(k),str(v))
+	pygame.mixer.music.pause()
+	pygame.mixer.music.set_volume(d_keys["music"])
+	pygame.mixer.music.unpause()
+	with open("user_setting.ini","w") as config_file:
+		config.write(config_file)
+
+def f_start_game():
+	start_game = True
+	choose_difficulty = False
+	play_trans = True
+	return start_game,choose_difficulty,play_trans
+
 class Character(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale, speed, type, ammo, grenades):
 		pygame.sprite.Sprite.__init__(self)
@@ -181,7 +221,7 @@ class Character(pygame.sprite.Sprite):
 		self.type = type
 		#AI
 		self.move_counter = 0
-		self.vision = pygame.Rect(0,0,175,20)
+		self.vision = pygame.Rect(0,0,175,5)
 		self.idling = False
 		self.idling_counter = 0
 
@@ -290,7 +330,7 @@ class Character(pygame.sprite.Sprite):
 
 	def ai(self):
 		if self.alive and player.alive:
-			if self.idling == False and random.randint(1,150) == 1:
+			if self.idling == False and random.randint(1,100) == 1 and self.in_air == False:
 				self.update_action(0)
 				self.idling = True
 				self.idling_counter = 75
@@ -315,6 +355,12 @@ class Character(pygame.sprite.Sprite):
 						self.direction *= -1
 						self.move_counter *= -1
 				else:
+					self.vision.center = (self.rect.centerx + 83 * self.direction, self.rect.centery-15)
+					if self.vision.colliderect(player.rect):
+						self.update_action(0)
+						self.shoot()
+					if DEBUG_VISION:
+						pygame.draw.rect(screen,RED, self.vision)
 					self.idling_counter -=1
 					if self.idling_counter <= 0:
 						self.idling = False
@@ -406,12 +452,13 @@ class Bullet(pygame.sprite.Sprite):
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
 				self.kill()
-				player.health -= 15
+				if DEBUG_INVICIBLE == False:
+					player.health -= d_difficulty["enemy_dmg"]
 		for enemy in enemy_group:
 			if pygame.sprite.spritecollide(enemy, bullet_group, False):
 				if enemy.alive:
 					self.kill()
-					enemy.health -= 25
+					enemy.health -= d_difficulty["player_dmg"]
 
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self,x,y,direction):
@@ -455,10 +502,10 @@ class Grenade(pygame.sprite.Sprite):
 			explosion = Explosion(self.rect.x,self.rect.y, 2)
 			explosion_group.add(explosion)
 			if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 1.5 and abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 1.5:
-				player.health -= 50
+				player.health -= d_difficulty["grenade_dmg"]
 			for enemy in enemy_group:
 				if abs(self.rect.centerx - enemy.rect.centerx) < TILE_SIZE * 1.5 and abs(self.rect.centery - enemy.rect.centery) < TILE_SIZE * 1.5:
-					enemy.health -= 50
+					enemy.health -= d_difficulty["grenade_dmg"]
 
 class Explosion(pygame.sprite.Sprite):
 	def __init__(self,x,y,scale):
@@ -567,14 +614,14 @@ class ItemBox(pygame.sprite.Sprite):
 		self.rect.x += screen_scroll
 		if pygame.sprite.collide_rect(self,player):
 			if self.item_type == 'Ammo':
-				player.ammo += 15
+				player.ammo += d_difficulty["ammo_box"]
 			if self.item_type == 'Grenade':
-				player.grenades += 3
+				player.grenades += d_difficulty["grenade_box"]
 			if self.item_type == 'Health':
-				if player.health + 50 >= 100:
+				if player.health + d_difficulty["heal_box"] >= 100:
 					player.health = 100
 				else:
-					player.health += 50
+					player.health += d_difficulty["heal_box"]
 			self.kill()
 
 class Healthbar():
@@ -612,35 +659,44 @@ class Fade():
 			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
 			if self.fade_counter >= SCREEN_WIDTH * 1:
 				fade_complete = True
+		if self.type == 3:
+			pygame.draw.rect(screen, self.colour, (-400 + self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH - self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, -60 + self.fade_counter))
+			pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT - self.fade_counter + 60, SCREEN_WIDTH, SCREEN_HEIGHT))
+			if self.fade_counter >= SCREEN_WIDTH * 0.5:
+				fade_complete = True
 		return fade_complete
 
 #Création des transitions
 play_transition = Fade(1,MENU_BG,4)
 death_transition = Fade(2,MENU_BG,7)
-
+end_transition = Fade(3,MENU_BG,4)
 
 #Création des boutons
-play_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 225, play_img, 2)
-resume_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 225, resume_img, 2)
-setting_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 50, setting_img, 2)
-quit_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 125, quit_img, 2)
-restart_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 225, restart_img, 2)
-controls_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 137.5, controls_img, 2)
-sound_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 37.5, sound_img, 2)
+play_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 225, play_img, 2)
+resume_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 225, resume_img, 2)
+setting_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 50, setting_img, 2)
+quit_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 + 125, quit_img, 2)
+restart_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 225, restart_img, 2)
+controls_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 250, controls_img, 2)
+sound_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 90, sound_img, 2)
 moins_music = button.Button(SCREEN_WIDTH - 350, SCREEN_HEIGHT // 2 - 120, moins_img, 1.25)
 plus_music = button.Button(SCREEN_WIDTH - 180, SCREEN_HEIGHT // 2 - 120, plus_img, 1.25)
 moins_effects = button.Button(SCREEN_WIDTH - 350, SCREEN_HEIGHT // 2 + 55, moins_img, 1.25)
 plus_effects = button.Button(SCREEN_WIDTH - 180, SCREEN_HEIGHT // 2 + 55, plus_img, 1.25)
 return_button = button.Button(10, 10, return_img, 1.5)
-left_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 300, left_img_menu, 1.5)
-right_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 200, right_img_menu, 1.5)
-jump_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 - 100, jump_img_menu, 1.5)
-rifle_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2, rifle_img_menu, 1.5)
-grenade_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 + 100, grenade_img_menu, 1.5)
-hand_button = button.Button(SCREEN_WIDTH - 655, SCREEN_HEIGHT // 2 + 200, hand_img_menu, 1.5)
-easy_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 - 100, easy_img, 2)
-medium_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 25, medium_img, 2)
-hard_button = button.Button(SCREEN_WIDTH // 3 - 10, SCREEN_HEIGHT // 2 + 150, hard_img, 2)
+left_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 - 280, left_img_menu, 1.5)
+right_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 - 180, right_img_menu, 1.5)
+jump_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 - 80, jump_img_menu, 1.5)
+rifle_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 + 20, rifle_img_menu, 1.5)
+grenade_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 + 120, grenade_img_menu, 1.5)
+hand_button = button.Button(SCREEN_WIDTH - 600, SCREEN_HEIGHT // 2 + 220, hand_img_menu, 1.5)
+easy_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 - 100, easy_img, 2)
+medium_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 + 25, medium_img, 2)
+hard_button = button.Button(SCREEN_WIDTH // 3, SCREEN_HEIGHT // 2 + 150, hard_img, 2)
+save_setting_button = button.Button(SCREEN_WIDTH - 730, SCREEN_HEIGHT // 2 + 100, save_setting_img, 1.25)
+default_setting_button = button.Button(SCREEN_WIDTH - 360, SCREEN_HEIGHT // 2 + 100, default_setting_img, 1.25)
 
 #Création des sprites groupes
 bullet_group = pygame.sprite.Group()
@@ -650,7 +706,6 @@ enemy_group = pygame.sprite.Group()
 item_box_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
-
 
 world_data = []
 for row in range(ROWS):
@@ -664,12 +719,17 @@ with open(f'levels/level{level}_data.csv',newline='') as csvfile:
 world = World()
 player,health_bar = world.process_data(world_data)
 
-d_keys = {"left":113,"right":100,"jump":32,"rifle":49,"grenade":50,"hand":51}
-
+load_settings()
+pygame.mixer.music.load("audio/music.wav")
+pygame.mixer.music.set_volume(d_keys["music"])
+pygame.mixer.music.play(-1, 0.0, 5000)
 run = True
 while run:
 	clock.tick(FPS)
 
+	if s_effects_load:
+		for elem in l_effects:
+			elem.set_volume(d_keys["effects"])
 	if start_game == False or pause == True:
 		screen.fill(MENU_BG)
 		if setting == True:
@@ -677,61 +737,60 @@ while run:
 				if return_button.draw(screen):
 					sound = False
 				draw_image(music_img,SCREEN_WIDTH // 3 - 100, SCREEN_HEIGHT // 2 - 137.5,2)
-				draw_text(str(music),font,WHITE,SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2 - 97.5)
+				draw_text(str(d_keys["music"]),font,WHITE,SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2 - 97.5)
 				draw_image(effects_img,SCREEN_WIDTH // 3 - 100, SCREEN_HEIGHT // 2 + 37.5,2)
-				draw_text(str(effects),font,WHITE,SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2 + 77.5)
+				draw_text(str(d_keys["effects"]),font,WHITE,SCREEN_WIDTH - 250, SCREEN_HEIGHT // 2 + 77.5)
 				if moins_music.draw(screen):
-					if music >= 0.05:
-						music = round(music - 0.05,2)
-						pygame.mixer.music.set_volume(music)
+					if d_keys["music"] >= 0.05:
+						d_keys["music"] = round(d_keys["music"] - 0.05,2)
+						pygame.mixer.music.set_volume(d_keys["music"])
 				if plus_music.draw(screen):
-					if music <= 0.95:
-						music = round(music + 0.05,2)
-						pygame.mixer.music.set_volume(music)
+					if d_keys["music"] <= 0.95:
+						d_keys["music"] = round(d_keys["music"] + 0.05,2)
+						pygame.mixer.music.set_volume(d_keys["music"])
 				if plus_effects.draw(screen):
-					if effects <= 0.95:
-						effects = round(effects + 0.05,2)
+					if d_keys["effects"] <= 0.95:
+						d_keys["effects"] = round(d_keys["effects"] + 0.05,2)
 						for elem in l_effects:
-							elem.set_volume(effects)
+							elem.set_volume(d_keys["effects"])
 				if moins_effects.draw(screen):
-					if effects >= 0.05:
-						effects = round(effects - 0.05,2)
+					if d_keys["effects"] >= 0.05:
+						d_keys["effects"] = round(d_keys["effects"] - 0.05,2)
 						for elem in l_effects:
-							elem.set_volume(effects)
+							elem.set_volume(d_keys["effects"])
 			elif control == True:
-				
 				if return_button.draw(screen):
 					control = False
 				if left_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "left"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["left"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 280)
+				draw_text(pygame.key.name(d_keys["left"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 260)
 				if right_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "right"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["right"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 180)
+				draw_text(pygame.key.name(d_keys["right"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 160)
 				if jump_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "jump"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["jump"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 80)
+				draw_text(pygame.key.name(d_keys["jump"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 - 60)
 				if rifle_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "rifle"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["rifle"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 20)
+				draw_text(pygame.key.name(d_keys["rifle"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 40)
 				if grenade_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "grenade"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["grenade"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 120)
+				draw_text(pygame.key.name(d_keys["grenade"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 140)
 				if hand_button.draw(screen) and pop_msg_key == False:
 					change_key = True
 					key_to_change = "hand"
 					pop_msg_key = True
-				draw_text(pygame.key.name(d_keys["hand"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 220)
+				draw_text(pygame.key.name(d_keys["hand"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 240)
 				if pop_msg_key:
 					draw_image(key_input_img,SCREEN_WIDTH // 5, SCREEN_HEIGHT // 3.25,2)
 			else:
@@ -739,6 +798,10 @@ while run:
 					setting = False
 				if sound_button.draw(screen):
 					sound = True
+				if save_setting_button.draw(screen):
+					save_settings()
+				if default_setting_button.draw(screen):
+					reset_settings()
 				if controls_button.draw(screen):
 					control = True
 					time.sleep(0.06)
@@ -747,23 +810,18 @@ while run:
 			if return_button.draw(screen):
 				choose_difficulty = False
 			if easy_button.draw(screen):
-				difficulty = d_easy
-				start_game = True
-				choose_difficulty = False
-				play_trans = True
+				d_difficulty = d_easy
+				start_game,choose_difficulty,play_trans = f_start_game()
 			if medium_button.draw(screen):
-				difficulty = d_medium
-				start_game = True
-				choose_difficulty = False
-				play_trans = True
+				d_difficulty = d_medium
+				start_game,choose_difficulty,play_trans = f_start_game()
 			if hard_button.draw(screen):
-				difficulty = d_hard
-				start_game = True
-				choose_difficulty = False
-				play_trans = True
+				d_difficulty = d_hard
+				start_game,choose_difficulty,play_trans = f_start_game()
 		else:
 			if pause == True:
 				if resume_button.draw(screen):
+					l_audio_loading[random.randint(0,2)].play
 					pause = False
 					play_trans = True
 			else:
@@ -771,8 +829,15 @@ while run:
 					choose_difficulty = True
 			if setting_button.draw(screen):
 				setting = True
+				time.sleep(0.06)
 			if quit_button.draw(screen):
 				run = False
+	elif end_game:
+		screen.fill(MENU_BG)
+		draw_text("Congratulations !",font3,WHITE,150, 200)
+		draw_text("You finished the game!",font3,WHITE,105, 270)
+		if quit_button.draw(screen):
+			run = False
 	else:
 		draw_bg()
 		world.draw()
@@ -803,8 +868,14 @@ while run:
 
 		if play_trans:
 			if play_transition.fade():
+				tmp = random.randint(0,2)
+				l_audio_loading[random.randint(0,2)].play()
 				play_trans = False
 				play_transition.fade_counter = 0
+		elif play_trans_end:
+			if end_transition.fade():
+				play_trans_end = False
+				end_game = True
 		else:
 			if player.alive:
 				if shoot:
@@ -842,8 +913,8 @@ while run:
 					level += 1
 					bg_scroll = 0
 					world_data = restart_level()
-					play_trans = True
 					if level <= MAX_LEVELS:
+						play_trans = True
 						with open(f'levels/level{level}_data.csv',newline='') as csvfile:
 							reader = csv.reader(csvfile,delimiter=",")
 							for x,row in enumerate(reader):
@@ -851,7 +922,11 @@ while run:
 									world_data[x][y] = int(tile)
 						world = World()
 						player,health_bar = world.process_data(world_data)
-
+					else:
+						pygame.mixer.music.stop()
+						audio_end.play()
+						play_trans_end = True
+						moving_left,moving_right = False,False
 
 				if player.temp_weapon == 0:
 					player.update_weapon(0) #0 = no weapon
@@ -866,6 +941,7 @@ while run:
 						s_audio_death = False
 				if death_transition.fade():
 					if restart_button.draw(screen):
+						l_audio_loading[random.randint(0,2)].play()
 						s_audio_death = True
 						bg_scroll = 0 
 						world_data = restart_level()
@@ -902,7 +978,7 @@ while run:
 				moving_left = True
 			if event.key == d_keys["right"]:
 				moving_right = True
-			if event.key == d_keys["jump"] and player.alive:
+			if event.key == d_keys["jump"] and player.alive and start_game:
 				player.jump = True
 				audio_jump.play()
 			if event.key == d_keys["rifle"]:
@@ -915,6 +991,8 @@ while run:
 				DEBUG_HITBOX = not DEBUG_HITBOX
 			if event.key == pygame.K_F2:
 				DEBUG_VISION = not DEBUG_VISION
+			if event.key == pygame.K_F3:
+				DEBUG_INVICIBLE = not DEBUG_INVICIBLE
 			if event.key == pygame.K_ESCAPE:
 				if start_game == False:
 					if setting == True:
