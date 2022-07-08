@@ -295,7 +295,8 @@ class Character(pygame.sprite.Sprite):
 		#check fin de niveau
 		level_complete = False
 		if pygame.sprite.spritecollide(self,exit_group,False):
-			level_complete = True
+			if self.type == "player1":
+				level_complete = True
 
 		#Check si tombé dans le vide
 		if self.rect.bottom > SCREEN_HEIGHT:
@@ -317,8 +318,9 @@ class Character(pygame.sprite.Sprite):
 					dy = tile[1].top - self.rect.bottom
 
 		#update la position de l'entité
-		self.rect.x += int(dx)
-		self.rect.y += int(dy)
+		if level_complete != True:
+			self.rect.x += int(dx)
+			self.rect.y += int(dy)
 
 		#update scroll
 		if self.type == "player1":
@@ -347,7 +349,10 @@ class Character(pygame.sprite.Sprite):
 					self.move(ai_moving_left, ai_moving_right)
 					self.update_action(1)
 					self.move_counter += 1
-					self.vision.center = (self.rect.centerx + 83 * self.direction, self.rect.centery-15)
+					if self.action == 0:
+						self.vision.center = (self.rect.centerx + 123 * self.direction, self.rect.centery-15)
+					else: 
+						self.vision.center = (self.rect.centerx + 103 * self.direction, self.rect.centery-15)
 					if DEBUG_VISION:
 						pygame.draw.rect(screen,RED, self.vision)
 
@@ -1014,6 +1019,8 @@ while run:
 							setting = not setting
 					else:
 						pause = not pause
+						moving_right,moving_left = False,False
+						player.update_action(0)
 						play_trans = True
 		#touches relachées
 		if event.type == pygame.KEYUP:
