@@ -28,7 +28,7 @@ ROWS = 13
 COLS = 130
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 46 
-level = 0
+level = 1
 SCROLL_THRESH = 250
 screen_scroll = 0
 bg_scroll = 0
@@ -286,7 +286,7 @@ class Character(pygame.sprite.Sprite):
 			self.jump = False
 			self.in_air = True
 
-		#application de la gravité
+		#on applique la gravité
 		self.vel_y += GRAVITY
 		if self.vel_y > 10:
 			self.vel_y
@@ -303,19 +303,25 @@ class Character(pygame.sprite.Sprite):
 			self.health = 0
 
 		#check des collisions
-		self.cursed_2_left = [2,5]
-		self.cursed_2_right = [1,3]
 		for tile in world.obstacle_list:
-			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
-				dx = 0
-			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
-				if self.vel_y < 0:
-					self.vel_y = 0
-					dy = tile[1].bottom - self.rect.top
-				elif self.vel_y >= 0:
-					self.vel_y = 0
-					self.in_air = False
-					dy = tile[1].top - self.rect.bottom
+			#obstacle gauche ou droit
+			if tile[0][1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
+				if tile[1] == 39:
+					pass
+				else:
+					dx = 0
+			#obstacle haut ou bas
+			if tile[0][1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+				if tile[1] == 39:
+					pass
+				else:
+					if self.vel_y < 0:
+						self.vel_y = 0
+						dy = tile[0][1].bottom - self.rect.top
+					elif self.vel_y >= 0:
+						self.vel_y = 0
+						self.in_air = False
+						dy = tile[0][1].top - self.rect.bottom
 
 		#update la position de l'entité
 		if level_complete != True:
@@ -332,7 +338,7 @@ class Character(pygame.sprite.Sprite):
 
 	def ai(self):
 		if self.alive and player.alive:
-			if self.idling == False and random.randint(1,100) == 1 and self.in_air == False:
+			if self.idling == False and random.randint(1,50) == 1 and self.vel_y <= 0:
 				self.update_action(0)
 				self.idling = True
 				self.idling_counter = 75
@@ -464,6 +470,9 @@ class Bullet(pygame.sprite.Sprite):
 				if enemy.alive:
 					self.kill()
 					enemy.health -= d_difficulty["player_dmg"]
+		for tile in world.obstacle_list:
+			if tile[0][1].colliderect(self.rect.x, self.rect.y, 5, 5):
+				self.kill()
 
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self,x,y,direction):
@@ -485,10 +494,10 @@ class Grenade(pygame.sprite.Sprite):
 		dy = self.vel_y
 
 		for tile in world.obstacle_list:
-			if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
+			if tile[0][1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
 				self.direction *= -1
 				dx = self.direction * self.speed
-			if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
+			if tile[0][1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
 				self.speed = 0
 				if self.vel_y < 0:
 					self.vel_y = 0
@@ -553,7 +562,7 @@ class World():
 					tile_data = (img, img_rect)
 					if tile >=0 and tile <= 5:
 						tile_data[1][3] -= 30
-						self.obstacle_list.append(tile_data)
+						self.obstacle_list.append([tile_data,tile])
 					if tile >= 6 and tile <= 16:
 						decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
 						decoration_group.add(decoration)
@@ -564,7 +573,7 @@ class World():
 						decoration = Decoration(img, x * TILE_SIZE, y * TILE_SIZE)
 						decoration_group.add(decoration)
 					if tile >= 26 and tile <= 40:
-						self.obstacle_list.append(tile_data)
+						self.obstacle_list.append([tile_data,tile])
 					if tile == 41:
 						item_box = ItemBox('Ammo', x * TILE_SIZE, y * TILE_SIZE)
 						item_box_group.add(item_box)
@@ -584,8 +593,8 @@ class World():
 
 	def draw(self):
 		for tile in self.obstacle_list:
-			tile[1][0] += screen_scroll
-			screen.blit(tile[0],tile[1])
+			tile[0][1][0] += screen_scroll
+			screen.blit(tile[0][0],tile[0][1])
 
 class Exit(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
