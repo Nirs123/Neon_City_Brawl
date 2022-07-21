@@ -6,6 +6,11 @@ import button
 import time
 import configparser
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+game_icon = pygame.image.load('logo.png')
+pygame.display.set_icon(game_icon)
+
 pygame.mixer.init()
 pygame.init()
 
