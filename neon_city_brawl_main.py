@@ -28,7 +28,7 @@ ROWS = 13
 COLS = 130
 TILE_SIZE = SCREEN_HEIGHT // ROWS
 TILE_TYPES = 46 
-level = 1
+level = 0
 SCROLL_THRESH = 250
 screen_scroll = 0
 bg_scroll = 0
@@ -313,7 +313,9 @@ class Character(pygame.sprite.Sprite):
 			#obstacle haut ou bas
 			if tile[0][1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
 				if tile[1] == 39:
-					pass
+					if self.vel_y < 0:
+						self.vel_y = 0
+						dy = tile[0][1].bottom - self.rect.top
 				else:
 					if self.vel_y < 0:
 						self.vel_y = 0
@@ -658,29 +660,32 @@ class Fade():
 		self.colour = colour
 		self.speed = speed
 		self.fade_counter = 0
+		self.fade_complete = False
 
 	def fade(self):
-		fade_complete = False
 		self.fade_counter += self.speed
-		if self.type == 1:
-			pygame.draw.rect(screen, self.colour, (0 - self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
-			pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH // 2 + self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-			pygame.draw.rect(screen, self.colour, (0, 0 - self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
-			pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT // 2 +self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT))
-			if self.fade_counter >= SCREEN_WIDTH * 0.5:
-				fade_complete = True
-		if self.type == 2:
-			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
-			if self.fade_counter >= SCREEN_WIDTH * 1:
-				fade_complete = True
-		if self.type == 3:
-			pygame.draw.rect(screen, self.colour, (-400 + self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
-			pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH - self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
-			pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, -60 + self.fade_counter))
-			pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT - self.fade_counter + 60, SCREEN_WIDTH, SCREEN_HEIGHT))
-			if self.fade_counter >= SCREEN_WIDTH * 0.5:
-				fade_complete = True
-		return fade_complete
+		if self.fade_complete == False:
+			if self.type == 1:
+				pygame.draw.rect(screen, self.colour, (0 - self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
+				pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH // 2 + self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+				pygame.draw.rect(screen, self.colour, (0, 0 - self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT // 2))
+				pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT // 2 +self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT))
+				if self.fade_counter >= SCREEN_WIDTH * 0.5:
+					self.fade_complete = True
+			if self.type == 2:
+				pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
+				if self.fade_counter >= SCREEN_WIDTH * 1:
+					self.fade_complete = True
+			if self.type == 3:
+				pygame.draw.rect(screen, self.colour, (-400 + self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
+				pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH - self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
+				pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, -60 + self.fade_counter))
+				pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT - self.fade_counter + 60, SCREEN_WIDTH, SCREEN_HEIGHT))
+				if self.fade_counter >= SCREEN_WIDTH * 0.5:
+					self.fade_complete = True
+		else:
+			screen.fill(MENU_BG)
+		return self.fade_complete
 
 #Création des transitions
 play_transition = Fade(1,MENU_BG,4)
@@ -949,12 +954,15 @@ while run:
 				if player.temp_weapon == 2:
 					player.update_weapon(2) #1 = rifle
 			else:
+				player.update_weapon(0)
 				screen_scroll = 0
 				if s_audio_death == True:
 						audio_death.play()
 						s_audio_death = False
 				if death_transition.fade():
 					if restart_button.draw(screen):
+						death_transition.fade_counter = 0
+						death_transition.fade_complete = False
 						l_audio_loading[random.randint(0,2)].play()
 						s_audio_death = True
 						bg_scroll = 0 
