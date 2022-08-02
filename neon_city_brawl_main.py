@@ -1,3 +1,4 @@
+#Importation des modules
 import pygame
 import os
 import random
@@ -135,6 +136,7 @@ RED = (255, 0, 0)
 GREEN = (53, 186, 28)
 WHITE = (255, 255, 255)
 
+#fonction permettant d'afficher le fond (avec le s3 couches de background)
 def draw_bg():
 	screen.fill(BG)
 	width = sky_img.get_width()
@@ -143,6 +145,7 @@ def draw_bg():
 		screen.blit(city1_img, ((x * width) - bg_scroll * 0.7, SCREEN_HEIGHT - city1_img.get_height()-50))
 		screen.blit(city2_img, ((x * width) - bg_scroll * 0.8, SCREEN_HEIGHT - city2_img.get_height()-50))
 
+#Fonction permettant d'afficher du texte
 font = pygame.font.SysFont('Futura',30)
 font2 = pygame.font.SysFont('Futura',45)
 font3 = pygame.font.SysFont('Futura',80)
@@ -150,6 +153,7 @@ def draw_text(text, font, text_col, x , y):
 	img = font.render(text, True, text_col,None)
 	screen.blit(img, (x,y))
 
+#Fonction permettant d'afficher une image
 def draw_image(image,x,y,scale):
 	width = image.get_width()
 	height = image.get_height()
@@ -158,6 +162,7 @@ def draw_image(image,x,y,scale):
 	n_rect.topleft = (x, y)
 	screen.blit(n_image, (x,y))
 
+#Fonction permettant de relancer un niveau
 def restart_level():
 	enemy_group.empty()
 	bullet_group.empty()
@@ -173,6 +178,7 @@ def restart_level():
 		data.append(r)
 	return data
 
+#Fonction et variables permettant de charger les settings au lancement du jeu
 default_d_keys = {"music":1.0,"effects":1.0,"left":113,"right":100,"jump":32,"rifle":49,"grenade":50,"hand":51}
 d_keys = {}
 def load_settings():
@@ -182,12 +188,14 @@ def load_settings():
 		else:
 			d_keys[key] = float(config.get("SETTINGS",key))
 
+#Fonction permettant de sauvegarder les settings actuel lorsque le joueur clique sur le bouton 'save settings'
 def save_settings():
 	for k,v in d_keys.items():
 		config.set("SETTINGS",str(k),str(v))
 	with open("user_setting.ini","w") as config_file:
 		config.write(config_file)
 
+#Fonction permettant de remettre les settings par défaut lorsque le joueur clique sur le bouton 'reset settings'
 def reset_settings():
 	for k,v in default_d_keys.items():
 		d_keys[k] = v
@@ -198,15 +206,18 @@ def reset_settings():
 	with open("user_setting.ini","w") as config_file:
 		config.write(config_file)
 
+#Fonction 'passerelle' permettant le lancelement du jeu
 def f_start_game():
 	start_game = True
 	choose_difficulty = False
 	play_trans = True
 	return start_game,choose_difficulty,play_trans
 
+#Classe permettant de créer les personnages (ennemis ou joueur)
 class Character(pygame.sprite.Sprite):
 	def __init__(self, x, y, scale, speed, type, ammo, grenades):
 		pygame.sprite.Sprite.__init__(self)
+		#Variables du personnage
 		self.health = 100
 		self.alive = True
 		self.ammo = ammo
@@ -235,6 +246,7 @@ class Character(pygame.sprite.Sprite):
 		self.weapon = 0
 		self.temp_weapon = 0
 
+		#Partie du code permettant de charger toutes les animations des personnages
 		animation_types = ['Idle', 'Run', 'Jump','Idle_Grenade','Jump_Grenade','Run_Grenade','Idle_Rifle','Jump_Rifle','Run_Rifle','Death']
 		for animation in animation_types:
 			#liste temporaire pour stockage de toutes les img d'une animation
@@ -253,6 +265,7 @@ class Character(pygame.sprite.Sprite):
 		self.width = self.image.get_width()
 		self.height = self.image.get_height()
 
+		#Partie du code permettant d'afficher le contour de la barre d'HP du joueur
 		self.hud_ext_list = []
 		longueur_fichier_2 = len(os.listdir(f'img/hud'))
 		for j in range(longueur_fichier_2):
@@ -262,6 +275,7 @@ class Character(pygame.sprite.Sprite):
 		self.rect2 = self.img_hud_ext.get_rect()
 		self.rect2.center = (70, 30)
 
+	#Fonction permettant de regarder en permanence si le joueur est mort ou non, et agis en conséquence (animation, variables etc...)
 	def check_alive(self):
 		if self.health <= 0:
 			self.health = 0
@@ -269,6 +283,7 @@ class Character(pygame.sprite.Sprite):
 			self.alive = False
 			self.update_action(9)
 
+	#Fonction permettant tout les movements du joueur + des collisions + de la gravité
 	def move(self, moving_left, moving_right):
 		#variables pour le mouvement
 		screen_scroll = 0
@@ -343,6 +358,7 @@ class Character(pygame.sprite.Sprite):
 
 		return screen_scroll,level_complete
 
+	#Fonction spécialiement pour les ennemis, afin qu'ils agissent aléatoirement dans leurs déplacement et tirent lorsqu'il voient le joueur
 	def ai(self):
 		if self.alive and player.alive:
 			if self.idling == False and random.randint(1,50) == 1 and self.vel_y <= 0:
@@ -386,12 +402,14 @@ class Character(pygame.sprite.Sprite):
 		#scroll
 		self.rect.x += screen_scroll
 
+	#Fonction update permettant d'actualiser les animations et de vérifier si le joueur est en vie
 	def update(self):
 		self.update_animation()
 		self.check_alive()
 		if self.shoot_cooldown > 0:
 			self.shoot_cooldown -= 1
 
+	#Fonction permettant d'update l'animation en fonction de l'action
 	def update_animation(self):
 		ANIMATION_COOLDOWN = 160
 		ANIMATION_COOLDOWN_2 = 150
@@ -412,6 +430,7 @@ class Character(pygame.sprite.Sprite):
 		if self.hud_ext_index >= len(self.hud_ext_list):
 			self.hud_ext_index = 0
 
+	#Fonction permettant au joueur de tirer
 	def shoot(self):
 		if self.ammo > 0 and self.shoot_cooldown == 0:
 			self.shoot_cooldown = 20
@@ -423,6 +442,7 @@ class Character(pygame.sprite.Sprite):
 			self.ammo -= 1
 			audio_shoot.play()
 
+	#Fonction permettant de changer l'action (idle, jump, run etc..)
 	def update_action(self, new_action):
 		#check si la nouvelle action est différente de la précedente
 		if new_action != self.action:
@@ -430,6 +450,7 @@ class Character(pygame.sprite.Sprite):
 			self.frame_index = 0
 			self.update_time = pygame.time.get_ticks()
 
+	#Fonction permettant de changer l'arme (lorsque le joueur passe a une autre arme)
 	def update_weapon(self, new_weapon):
 		#check si la nouvelle arme  est différente de la précedente
 		if new_weapon != self.weapon:
@@ -437,6 +458,7 @@ class Character(pygame.sprite.Sprite):
 			self.weapon_frame_index = 0
 			self.update_time = pygame.time.get_ticks()
 
+	#Fonction permettant d'afficher le personnage sur le jeu
 	def draw(self):
 		screen.blit(pygame.transform.flip(self.image, self.flip, False), self.rect)
 		if self.type == "player1":
@@ -444,11 +466,14 @@ class Character(pygame.sprite.Sprite):
 		if DEBUG_HITBOX:
 			pygame.draw.rect(screen, RED, self.rect, 1)
 
+#Classe permettant la gestion des balles tirés
 class Bullet(pygame.sprite.Sprite):
 	def __init__(self,x,y,direction,color):
 		pygame.sprite.Sprite.__init__(self)
+		#Variables de la balle
 		self.speed = 6
 		self.color = color
+		#Choix de l'image en fonction de qui l'a tiré (bleu = joueur, rose = ennemis)
 		if self.color == "blue":
 			self.image = blue_bullet_img
 			self.image = pygame.transform.scale(self.image, (int(self.image.get_width()*0.5), int(self.image.get_height()* 0.5)))
@@ -456,37 +481,50 @@ class Bullet(pygame.sprite.Sprite):
 			self.image = pink_bullet_img
 			self.image = pygame.transform.scale(self.image, (int(self.image.get_width()*0.7), int(self.image.get_height()* 0.7)))
 		self.rect = self.image.get_rect()
+		#Ajustement des hitbox
 		if self.color == "blue":
 			self.rect.center = (x,y+5)
 		elif self.color == "pink":
 			self.rect.center = (x,y-15)
 		self.direction = direction
 
+	#Fonction permettant l'update de la balle, c'est a dire son déplacement vers l'endroit tiré jusqu'a rencontrer un obstacle, un joueur ou le bord de map
 	def update(self):
+		#Déplacement de la balle
 		self.rect.x += (self.direction * self.speed) + screen_scroll
+		
+		#Vérification si la balle ne sort pas de la map
 		if self.rect.right < 0 or self.rect.left > SCREEN_WIDTH:
 			self.kill()
 
+		#Application des dommages si la balle touche le joueur
 		if pygame.sprite.spritecollide(player, bullet_group, False):
 			if player.alive:
 				self.kill()
 				if DEBUG_INVICIBLE == False:
 					player.health -= d_difficulty["enemy_dmg"]
+
+		#Application des dommages si la balle touche un ennemi
 		for enemy in enemy_group:
 			if pygame.sprite.spritecollide(enemy, bullet_group, False):
 				if enemy.alive:
 					self.kill()
 					enemy.health -= d_difficulty["player_dmg"]
+
+		#Suppression de la balle si elle rencontre un obstacle
 		for tile in world.obstacle_list:
 			if tile[0][1].colliderect(self.rect.x, self.rect.y, 5, 5):
 				self.kill()
 
+#Classe permettant la gestion, lancement des grenades
 class Grenade(pygame.sprite.Sprite):
 	def __init__(self,x,y,direction):
 		pygame.sprite.Sprite.__init__(self)
+		#Variables de la grenade
 		self.timer = 135
 		self.vel_y = -12
 		self.speed = 6
+		#Chargement de l'image de la grenade
 		self.image = grenade_img
 		self.image = pygame.transform.scale(self.image, (int(self.image.get_width()*0.5), int(self.image.get_height()* 0.5)))
 		self.rect = self.image.get_rect()
@@ -495,11 +533,14 @@ class Grenade(pygame.sprite.Sprite):
 		self.width = self.image.get_width()
 		self.height = self.image.get_height()
 
+	#Fonction permettant l'update de la grenade
 	def update(self):
+		#Détermination de son déplacement
 		self.vel_y += GRAVITY
 		dx = self.speed * self.direction
 		dy = self.vel_y
 
+		#Si la grenade touche un obstacle, agis en conséquence (s'arrete)
 		for tile in world.obstacle_list:
 			if tile[0][1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
 				self.direction *= -1
@@ -513,24 +554,30 @@ class Grenade(pygame.sprite.Sprite):
 					self.vel_y =0 
 					dy = tile[1].top - self.rect.bottom
 
+		#Application du déplacement de la grenade
 		self.rect.x += dx + screen_scroll
 		self.rect.y += dy + 2
 
+		#Partie du code permettant la gestion de la grenade quand elle explose (fait notamment appel a la classe Explosion)
 		self.timer -= 1
 		if self.timer <= 0:
 			self.kill()
 			audio_grenade.play()
 			explosion = Explosion(self.rect.x,self.rect.y, 2)
 			explosion_group.add(explosion)
+			#Application des dégats au joueur si il est dans la range de la grenade au moment de l'explosions
 			if abs(self.rect.centerx - player.rect.centerx) < TILE_SIZE * 1.5 and abs(self.rect.centery - player.rect.centery) < TILE_SIZE * 1.5:
 				player.health -= d_difficulty["grenade_dmg"]
+			#Application des dégats aux ennemis qui sont dans la range de la grenade au moment de l'explosion
 			for enemy in enemy_group:
 				if abs(self.rect.centerx - enemy.rect.centerx) < TILE_SIZE * 1.5 and abs(self.rect.centery - enemy.rect.centery) < TILE_SIZE * 1.5:
 					enemy.health -= d_difficulty["grenade_dmg"]
 
+#Classe permettant la gestion de l'explosion de la Grenade
 class Explosion(pygame.sprite.Sprite):
 	def __init__(self,x,y,scale):
 		pygame.sprite.Sprite.__init__(self)
+		#Partie du code permettant de charger l'animation de l'explosion
 		self.images = []
 		for num in range(15):
 			img = pygame.image.load(f'img/explosion/{num}.png').convert_alpha()
@@ -542,6 +589,7 @@ class Explosion(pygame.sprite.Sprite):
 		self.rect.center = (x,y-20)
 		self.counter = 0
 
+	#Fonction permettant l'update de l'animation de l'explosion
 	def update(self):
 		self.rect.x += screen_scroll
 		EXPLOSION_SPEED = 5
@@ -554,10 +602,12 @@ class Explosion(pygame.sprite.Sprite):
 			else:
 				self.image = self.images[self.frame_index]
 
+#Classe permettant la chargement de niveau
 class World():
 	def __init__(self):
 		self.obstacle_list = []
 
+	#Fonction permettant de charger un niveau depuis le fichier .csv et en fonction des numéros de chaque case, agis en conséquence
 	def process_data(self,data):
 		for y, row in enumerate(data):
 			for x, tile in enumerate(row):
@@ -598,46 +648,59 @@ class World():
 						enemy_group.add(enemy)
 		return player,health_bar
 
+	#Fonction permettant l'affichage du monde
 	def draw(self):
 		for tile in self.obstacle_list:
 			tile[0][1][0] += screen_scroll
 			screen.blit(tile[0][0],tile[0][1])
 
+#Classe permettant la création du panneau de fin de niveau
 class Exit(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
         pygame.sprite.Sprite.__init__(self)
+		#Chargement de l'image du panneau de fin de niveau
         self.image = img
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
+	#Fonction permettant l'update du panneau de fin de niveau
     def update(self):
         self.rect.x += screen_scroll
 
+#Classe permettant l'affichage des éléments décoratifs du niveau
 class Decoration(pygame.sprite.Sprite):
     def __init__(self, img, x, y):
         pygame.sprite.Sprite.__init__(self)
+		#Chargement de l'image de l'élément décoratif
         self.image = img
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2, y + (TILE_SIZE - self.image.get_height()))
 
+	#Fonction permettant l'update des éléments décoratifs
     def update(self):
         self.rect.x += screen_scroll
 
+#Classe permettant la création et la gestion des box bonus
 class ItemBox(pygame.sprite.Sprite):
 	def __init__(self, item_type, x, y):
 		pygame.sprite.Sprite.__init__(self)
+		#Variables et chargement de l'image de la box
 		self.item_type = item_type
 		self.image = item_boxes[self.item_type]
 		self.rect = self.image.get_rect()
 		self.rect.midtop = (x + TILE_SIZE//2, y + (TILE_SIZE - self.image.get_height()))
 
+	#Fonction permettant l'update de la box bonus ainsi que l'application du bonus en cas de contact avec le joueur
 	def update(self):
 		self.rect.x += screen_scroll
 		if pygame.sprite.collide_rect(self,player):
+			#Box bonus Ammo
 			if self.item_type == 'Ammo':
 				player.ammo += d_difficulty["ammo_box"]
+			#Box bonus Grenade
 			if self.item_type == 'Grenade':
 				player.grenades += d_difficulty["grenade_box"]
+			#Box bonus Heal
 			if self.item_type == 'Health':
 				if player.health + d_difficulty["heal_box"] >= 100:
 					player.health = 100
@@ -645,31 +708,37 @@ class ItemBox(pygame.sprite.Sprite):
 					player.health += d_difficulty["heal_box"]
 			self.kill()
 
+#Classe permettant la création et affichage de la barre de Point de vie
 class Healthbar():
 	def __init__(self,x,y,health,max_health):
+		#Variables de la barre de point de vie
 		self.x = x
 		self.y = y
 		self.health = health
 		self.max_health = max_health
 
+	#Fonction permettant l'affichage de la barre de point de vie
 	def draw(self,health):
 		self.health = health
 		ratio = self.health/self.max_health
 		pygame.draw.rect(screen, RED, (self.x,self.y,120,40))
 		pygame.draw.rect(screen, GREEN, (self.x, self.y, 120 * ratio, 40))
 
-
+#Classe permettant de faire les transitions
 class Fade():
 	def __init__(self,type,colour,speed):
+		#Variables de la transition
 		self.type = type
 		self.colour = colour
 		self.speed = speed
 		self.fade_counter = 0
 		self.fade_complete = False
 
+	#Affichage de la transition en fonction de son type
 	def fade(self):
 		self.fade_counter += self.speed
 		if self.fade_complete == False:
+			#1 = Play transition
 			if self.type == 1:
 				pygame.draw.rect(screen, self.colour, (0 - self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
 				pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH // 2 + self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -677,10 +746,12 @@ class Fade():
 				pygame.draw.rect(screen, self.colour, (0, SCREEN_HEIGHT // 2 +self.fade_counter, SCREEN_WIDTH, SCREEN_HEIGHT))
 				if self.fade_counter >= SCREEN_WIDTH * 0.5:
 					self.fade_complete = True
+			#2 = Death transition
 			if self.type == 2:
 				pygame.draw.rect(screen, self.colour, (0, 0, SCREEN_WIDTH, 0 + self.fade_counter))
 				if self.fade_counter >= SCREEN_WIDTH * 1:
 					self.fade_complete = True
+			#3 = End transition
 			if self.type == 3:
 				pygame.draw.rect(screen, self.colour, (-400 + self.fade_counter, 0, SCREEN_WIDTH // 2, SCREEN_HEIGHT))
 				pygame.draw.rect(screen, self.colour, (SCREEN_WIDTH - self.fade_counter, 0, SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -731,6 +802,7 @@ item_box_group = pygame.sprite.Group()
 decoration_group = pygame.sprite.Group()
 exit_group = pygame.sprite.Group()
 
+#Ouverture du premier niveau
 world_data = []
 for row in range(ROWS):
 	r = [-1] * COLS
@@ -743,20 +815,27 @@ with open(f'levels/level{level}_data.csv',newline='') as csvfile:
 world = World()
 player,health_bar = world.process_data(world_data)
 
+#Chargement des settings et de la musique
 load_settings()
 pygame.mixer.music.load("audio/music.wav")
 pygame.mixer.music.set_volume(d_keys["music"])
 pygame.mixer.music.play(-1, 0.0, 5000)
+
+#Lancement du jeu
 run = True
 while run:
 	clock.tick(FPS)
 
+	#Changement de volume si il y a
 	if s_effects_load:
 		for elem in l_effects:
 			elem.set_volume(d_keys["effects"])
+	#Affichage du menu si la partie n'a pas commencé ou est en pause
 	if start_game == False or pause == True:
 		screen.fill(MENU_BG)
+		#Affichage de la page des settings 
 		if setting == True:
+			#Affichage de la page des settings du son
 			if sound == True:
 				if return_button.draw(screen):
 					sound = False
@@ -782,6 +861,7 @@ while run:
 						d_keys["effects"] = round(d_keys["effects"] - 0.05,2)
 						for elem in l_effects:
 							elem.set_volume(d_keys["effects"])
+			#Affichage de la page des settings de controls
 			elif control == True:
 				if return_button.draw(screen):
 					control = False
@@ -817,6 +897,7 @@ while run:
 				draw_text(pygame.key.name(d_keys["hand"]),font2,WHITE,SCREEN_WIDTH - 255, SCREEN_HEIGHT // 2 + 240)
 				if pop_msg_key:
 					draw_image(key_input_img,SCREEN_WIDTH // 5, SCREEN_HEIGHT // 3.25,2)
+			#Affichage de la page settings de base
 			else:
 				if return_button.draw(screen):
 					setting = False
@@ -829,6 +910,7 @@ while run:
 				if controls_button.draw(screen):
 					control = True
 					time.sleep(0.06)
+		#Affichage du menu de choix de difficulté
 		elif choose_difficulty:
 			draw_image(difficulty_img,SCREEN_WIDTH // 4, SCREEN_WIDTH - 755,1.5)
 			if return_button.draw(screen):
@@ -856,21 +938,26 @@ while run:
 				time.sleep(0.06)
 			if quit_button.draw(screen):
 				run = False
+	#Si le jeu est fini
 	elif end_game:
 		screen.fill(MENU_BG)
 		draw_text("Congratulations !",font3,WHITE,150, 200)
 		draw_text("You finished the game!",font3,WHITE,105, 270)
 		if quit_button.draw(screen):
 			run = False
+	#Sinon, chargement et lancement du jeu
 	else:
+		#Affichage du niveau
 		draw_bg()
 		world.draw()
 
+		#Appel des fonctions pour les ennemis
 		for enemy in enemy_group:
 			enemy.ai()
 			enemy.draw()
 			enemy.update()
 
+		#Update des différents éléments
 		bullet_group.update()
 		bullet_group.draw(screen)
 		grenade_group.update()
@@ -884,18 +971,21 @@ while run:
 		exit_group.draw(screen)
 		exit_group.update()
 
+		#Appel des éléments pour le joueur
 		health_bar.draw(player.health)
 		player.draw()
 		player.update()
 		draw_text(f"Ammo: {player.ammo}",font,WHITE, 15, 60)
 		draw_text(f"Grenade: {player.grenades}",font,WHITE, 15, 85)
 
+		#Si la transition de play est appelé
 		if play_trans:
 			if play_transition.fade():
 				tmp = random.randint(0,2)
 				l_audio_loading[random.randint(0,2)].play()
 				play_trans = False
 				play_transition.fade_counter = 0
+		#Si la transition de mort est appelé
 		elif play_trans_end:
 			if end_transition.fade():
 				play_trans_end = False
@@ -980,6 +1070,7 @@ while run:
 						world = World()
 						player,health_bar = world.process_data(world_data)
 
+	#Inputs du clavier et de la souris
 	for event in pygame.event.get():
 		if event.type == pygame.MOUSEBUTTONDOWN:
 			if event.button == 5:
